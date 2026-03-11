@@ -1,1 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeLog — Lecture Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #11111a;
+    --surface2: #1a1a28;
+    --border: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --card: #14141f;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND GRID ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .header-right {
+    display: flex; gap: 1rem; align-items: center;
+  }
+
+  .date-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    position: relative; z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: 0;
+  }
+
+  .tab {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    position: relative; bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── SECTION GRID ── */
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+
+  .card-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--muted);
+  }
+
+  .card-body { padding: 1.25rem; }
+
+  /* ── LECTURE ENTRIES ── */
+  .entry-list {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+  }
+
+  .entry-list::-webkit-scrollbar { width: 4px; }
+  .entry-list::-webkit-scrollbar-track { background: var(--surface); }
+  .entry-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .entry-item {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    gap: 0.5rem;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-topic {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .entry-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  .entry-delete {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 0.9rem; padding: 0 0.2rem;
+    transition: color 0.2s; flex-shrink: 0;
+    line-height: 1;
+  }
+  .entry-delete:hover { color: var(--danger); }
+
+  /* ── ADD FORM ── */
+  .add-form {
+    display: flex; gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .add-input {
+    flex: 1; min-width: 120px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .add-input:focus { border-color: var(--accent); }
+  .add-input::placeholder { color: var(--muted); }
+
+  .add-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .add-btn:hover { opacity: 0.85; }
+  .add-btn:active { transform: scale(0.97); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .stat-icon {
+    font-size: 1.6rem;
+    width: 2.5rem; text-align: center;
+  }
+
+  .stat-info { flex: 1; }
+  .stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent2);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  /* ── COLOR DOTS PER CATEGORY ── */
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-frontend  { background: #06b6d4; }
+  .dot-backend   { background: #10b981; }
+  .dot-dsa-java  { background: #f59e0b; }
+  .dot-dsa-cpp   { background: #ef4444; }
+  .dot-python    { background: #3b82f6; }
+  .dot-javascript{ background: #eab308; }
+  .dot-html-css  { background: #f97316; }
+  .dot-git       { background: #8b5cf6; }
+  .dot-other     { background: #6b7280; }
+
+  /* ── HISTORY PANEL ── */
+  .date-selector-row {
+    display: flex; gap: 1rem; align-items: center;
+    margin-bottom: 1.5rem; flex-wrap: wrap;
+  }
+
+  .date-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .date-input:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-success { background: var(--accent3); color: #fff; }
+  .btn-warn { background: var(--warn); color: #000; }
+  .btn:hover { opacity: 0.85; }
+
+  /* ── DAY SUMMARY ── */
+  .day-summary-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  @media (max-width: 768px) {
+    .day-summary-section { grid-template-columns: 1fr; }
+    .section-grid { grid-template-columns: 1fr; }
+  }
+
+  .summary-preview {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+  }
+
+  .summary-preview h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+  }
+
+  .linkedin-post {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-family: 'DM Sans', sans-serif;
+    min-height: 200px;
+    user-select: all;
+  }
+
+  .download-options {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+
+  .download-options h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.25rem;
+  }
+
+  /* ── HISTORY TIMELINE ── */
+  .timeline {
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+
+  .timeline-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .timeline-item:hover { border-color: var(--accent); }
+
+  .timeline-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1.25rem;
+  }
+
+  .timeline-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+  }
+  .timeline-count {
+    font-size: 0.75rem; color: var(--muted);
+  }
+  .timeline-cats {
+    display: flex; gap: 0.4rem; flex-wrap: wrap;
+  }
+  .timeline-cat-tag {
+    font-size: 0.65rem;
+    background: var(--surface2);
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+    color: var(--muted);
+  }
+
+  .timeline-body {
+    padding: 0 1.25rem 0.9rem;
+    display: none;
+  }
+  .timeline-body.open { display: block; }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+  .empty-state .es-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ── PROGRESS RING ── */
+  .cat-progress { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+  .prog-row { display: flex; align-items: center; gap: 0.75rem; }
+  .prog-label { font-size: 0.75rem; color: var(--muted); width: 90px; flex-shrink: 0; }
+  .prog-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .prog-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .prog-num { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); width: 20px; text-align: right; }
+
+  /* ── NOTIFICATION TOAST ── */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
+    background: var(--surface2);
+    border: 1px solid var(--accent3);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.82rem;
+    color: var(--accent3);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── SCROLLBAR GLOBAL ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin-left: 0.5rem;
+  }
+
+  .today-date-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.3);
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+  }
+
+  .note-field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    resize: vertical;
+    min-height: 70px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-top: 0.5rem;
+  }
+  .note-field:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Code<span>Log</span></div>
+  <div class="header-right">
+    <div class="date-badge" id="headerDate"></div>
+    <button class="btn btn-success" onclick="downloadTodaySummary()">⬇ Today's Summary</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('today', this)">📅 Today</button>
+    <button class="tab" onclick="switchTab('history', this)">🗂 All Days</button>
+    <button class="tab" onclick="switchTab('overview', this)">📊 Overview</button>
+  </div>
+
+  <!-- ══════════════ TODAY TAB ══════════════ -->
+  <div id="tab-today" class="tab-panel active">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div class="section-title" style="margin-bottom:0; flex:1;">Today's Lectures</div>
+      <div class="today-date-label" id="todayLabel"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="todayStats"></div>
+
+    <!-- Category Cards -->
+    <div class="section-title">Frontend</div>
+    <div class="section-grid" id="frontendGrid"></div>
+
+    <div class="section-title">Backend</div>
+    <div class="section-grid" id="backendGrid"></div>
+
+    <div class="section-title">DSA</div>
+    <div class="section-grid" id="dsaGrid"></div>
+
+    <div class="section-title">Programming Languages</div>
+    <div class="section-grid" id="langsGrid"></div>
+
+    <div class="section-title">Notes for Today</div>
+    <div class="card" style="margin-bottom:2rem;">
+      <div class="card-body">
+        <textarea class="note-field" id="dailyNote" placeholder="Any extra notes, reflections, or links from today's session…" oninput="saveNote()"></textarea>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ HISTORY TAB ══════════════ -->
+  <div id="tab-history" class="tab-panel">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div class="section-title" style="margin-bottom:0;">Past Sessions</div>
+      <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+        <input type="date" class="date-input" id="historyDatePicker" onchange="loadHistoryDate()">
+        <button class="btn btn-warn" onclick="downloadHistoryDate()">⬇ Download Selected</button>
+      </div>
+    </div>
+
+    <!-- Selected date view -->
+    <div id="historyDateView" style="display:none; margin-bottom:2rem;">
+      <div class="day-summary-section">
+        <div class="summary-preview">
+          <h3>📝 LinkedIn Post Preview</h3>
+          <div class="linkedin-post" id="historyLinkedinPost"></div>
+        </div>
+        <div class="download-options">
+          <h3>⬇ Export</h3>
+          <button class="btn btn-success" style="width:100%" onclick="downloadHistoryDate('txt')">Download as .txt</button>
+          <button class="btn btn-primary" style="width:100%" onclick="downloadHistoryDate('md')">Download as .md</button>
+          <button class="btn btn-secondary" style="width:100%" onclick="copyLinkedinPost()">📋 Copy LinkedIn Post</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Timeline -->
+    <div class="section-title">All Recorded Days</div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <!-- ══════════════ OVERVIEW TAB ══════════════ -->
+  <div id="tab-overview" class="tab-panel">
+    <div class="section-title">All-Time Statistics</div>
+    <div class="stats-bar" id="overallStats"></div>
+
+    <div class="day-summary-section" style="margin-top:0;">
+      <div class="summary-preview">
+        <h3>📊 Category Breakdown</h3>
+        <div class="cat-progress" id="catProgress"></div>
+      </div>
+      <div class="download-options">
+        <h3>🗃 Data Management</h3>
+        <button class="btn btn-success" style="width:100%" onclick="exportAllData()">Export All Data (.json)</button>
+        <button class="btn btn-secondary" style="width:100%; position:relative; overflow:hidden;">
+          Import Data (.json)
+          <input type="file" accept=".json" onchange="importData(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+        </button>
+        <hr style="border-color:var(--border);">
+        <button class="btn" style="width:100%;background:var(--danger);color:#fff;" onclick="clearAllData()">🗑 Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast">✓ Saved</div>
+
+<script>
+// ════════════════════════════════════════
+// DATA MODEL
+// ════════════════════════════════════════
+
+const CATEGORIES = {
+  frontend: {
+    label: 'Frontend', dot: 'dot-frontend',
+    subs: ['HTML/CSS', 'JavaScript', 'React', 'Vue', 'Angular', 'TypeScript', 'Tailwind', 'Other Frontend']
+  },
+  backend: {
+    label: 'Backend', dot: 'dot-backend',
+    subs: ['Node.js', 'Python/Django', 'Java Spring', 'Express', 'REST APIs', 'Databases', 'Other Backend']
+  },
+  dsaJava: {
+    label: 'DSA (Java)', dot: 'dot-dsa-java',
+    subs: ['Arrays', 'Linked Lists', 'Stacks/Queues', 'Trees', 'Graphs', 'Dynamic Programming', 'Sorting', 'Searching', 'Other']
+  },
+  dsaCpp: {
+    label: 'DSA (C++)', dot: 'dot-dsa-cpp',
+    subs: ['Arrays', 'Linked Lists', 'Stacks/Queues', 'Trees', 'Graphs', 'Dynamic Programming', 'Sorting', 'Searching', 'Other']
+  },
+  python: {
+    label: 'Python', dot: 'dot-python',
+    subs: ['Basics', 'OOP', 'Libraries', 'File I/O', 'Other']
+  },
+  javascript: {
+    label: 'JavaScript', dot: 'dot-javascript',
+    subs: ['Basics', 'ES6+', 'Async/Await', 'DOM', 'Other']
+  },
+  java: {
+    label: 'Java', dot: 'dot-dsa-java',
+    subs: ['Basics', 'OOP', 'Collections', 'Threads', 'Other']
+  },
+  cpp: {
+    label: 'C++', dot: 'dot-dsa-cpp',
+    subs: ['Basics', 'OOP', 'STL', 'Pointers', 'Other']
+  },
+  git: {
+    label: 'Git & Tools', dot: 'dot-git',
+    subs: ['Git Basics', 'GitHub', 'Terminal', 'VS Code', 'Other']
+  }
+};
+
+// Today's key
+function todayKey() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function getData() {
+  try { return JSON.parse(localStorage.getItem('codelog_data') || '{}'); }
+  catch { return {}; }
+}
+
+function saveData(d) {
+  localStorage.setItem('codelog_data', JSON.stringify(d));
+}
+
+function getDayData(dateKey) {
+  const d = getData();
+  if (!d[dateKey]) d[dateKey] = { entries: {}, note: '' };
+  return d[dateKey];
+}
+
+function addEntry(dateKey, catKey, topic, subcat) {
+  const d = getData();
+  if (!d[dateKey]) d[dateKey] = { entries: {}, note: '' };
+  if (!d[dateKey].entries[catKey]) d[dateKey].entries[catKey] = [];
+  d[dateKey].entries[catKey].push({
+    id: Date.now(),
+    topic,
+    subcat,
+    time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+  });
+  saveData(d);
+}
+
+function deleteEntry(dateKey, catKey, id) {
+  const d = getData();
+  if (d[dateKey]?.entries?.[catKey]) {
+    d[dateKey].entries[catKey] = d[dateKey].entries[catKey].filter(e => e.id !== id);
+    saveData(d);
+  }
+}
+
+// ════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════
+
+function toast(msg = '✓ Saved') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'history') renderTimeline();
+  if (tab === 'overview') renderOverview();
+}
+
+// ════════════════════════════════════════
+// RENDER CARDS
+// ════════════════════════════════════════
+
+function makeCard(catKey, dateKey) {
+  const cat = CATEGORIES[catKey];
+  const dayData = getDayData(dateKey);
+  const entries = dayData.entries[catKey] || [];
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = `card-${catKey}`;
+
+  const entryHTML = entries.length === 0
+    ? `<div style="color:var(--muted);font-size:0.78rem;text-align:center;padding:1rem 0;">No lectures logged yet</div>`
+    : entries.map(e => `
+      <div class="entry-item" id="entry-${e.id}">
+        <div class="entry-info">
+          <div class="entry-topic">${escHtml(e.topic)}</div>
+          <div class="entry-meta">${e.subcat ? escHtml(e.subcat) + ' · ' : ''}${e.time}</div>
+        </div>
+        <button class="entry-delete" onclick="handleDelete('${dateKey}','${catKey}',${e.id})" title="Delete">✕</button>
+      </div>`).join('');
+
+  const subcatOptions = cat.subs.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot ${cat.dot}"></span>
+        ${cat.label}
+      </div>
+      <div class="card-badge">${entries.length} lecture${entries.length !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="card-body">
+      <div class="entry-list" id="list-${catKey}">${entryHTML}</div>
+      <div class="add-form">
+        <select class="add-input" id="sub-${catKey}" style="max-width:130px;">
+          ${subcatOptions}
+        </select>
+        <input class="add-input" id="input-${catKey}" placeholder="Topic / chapter name…" onkeydown="if(event.key==='Enter') handleAdd('${dateKey}','${catKey}')">
+        <button class="add-btn" onclick="handleAdd('${dateKey}','${catKey}')">+ Add</button>
+      </div>
+    </div>`;
+
+  return card;
+}
+
+function handleAdd(dateKey, catKey) {
+  const inp = document.getElementById('input-' + catKey);
+  const sub = document.getElementById('sub-' + catKey);
+  const topic = inp.value.trim();
+  if (!topic) return;
+  addEntry(dateKey, catKey, topic, sub.value);
+  inp.value = '';
+  refreshCard(catKey, dateKey);
+  updateTodayStats();
+  toast('Lecture added!');
+}
+
+function handleDelete(dateKey, catKey, id) {
+  deleteEntry(dateKey, catKey, id);
+  refreshCard(catKey, dateKey);
+  updateTodayStats();
+  toast('Entry removed');
+}
+
+function refreshCard(catKey, dateKey) {
+  const old = document.getElementById('card-' + catKey);
+  if (!old) return;
+  const newCard = makeCard(catKey, dateKey);
+  old.replaceWith(newCard);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════
+// TODAY TAB
+// ════════════════════════════════════════
+
+function renderToday() {
+  const dk = todayKey();
+
+  // Header date
+  const now = new Date();
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'});
+  document.getElementById('todayLabel').textContent = dk;
+
+  // Frontend cards
+  const fg = document.getElementById('frontendGrid');
+  fg.innerHTML = '';
+  ['frontend', 'html-css-standalone'].forEach(k => {
+    if (CATEGORIES[k]) fg.appendChild(makeCard(k, dk));
+  });
+  fg.appendChild(makeCard('frontend', dk));
+  fg.appendChild(makeCard('javascript', dk));
+
+  // Backend
+  const bg = document.getElementById('backendGrid');
+  bg.innerHTML = '';
+  bg.appendChild(makeCard('backend', dk));
+
+  // DSA
+  const dg = document.getElementById('dsaGrid');
+  dg.innerHTML = '';
+  dg.appendChild(makeCard('dsaJava', dk));
+  dg.appendChild(makeCard('dsaCpp', dk));
+
+  // Languages
+  const lg = document.getElementById('langsGrid');
+  lg.innerHTML = '';
+  ['python', 'java', 'cpp', 'git'].forEach(k => lg.appendChild(makeCard(k, dk)));
+
+  // Note
+  const saved = getDayData(dk).note || '';
+  document.getElementById('dailyNote').value = saved;
+
+  updateTodayStats();
+}
+
+function updateTodayStats() {
+  const dk = todayKey();
+  const dayData = getDayData(dk);
+  let total = 0;
+  const catCounts = {};
+  Object.keys(CATEGORIES).forEach(k => {
+    const n = (dayData.entries[k] || []).length;
+    catCounts[k] = n;
+    total += n;
+  });
+
+  const topCat = Object.keys(catCounts).sort((a,b) => catCounts[b]-catCounts[a])[0];
+
+  document.getElementById('todayStats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon">📚</div>
+      <div class="stat-info">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total Lectures Today</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-info">
+        <div class="stat-num">${total > 0 ? catCounts[topCat] : 0}</div>
+        <div class="stat-label">${total > 0 ? CATEGORIES[topCat].label : '—'} (top)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📂</div>
+      <div class="stat-info">
+        <div class="stat-num">${Object.values(catCounts).filter(v=>v>0).length}</div>
+        <div class="stat-label">Active Categories</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🗓</div>
+      <div class="stat-info">
+        <div class="stat-num">${Object.keys(getData()).length}</div>
+        <div class="stat-label">Days Tracked</div>
+      </div>
+    </div>`;
+}
+
+function saveNote() {
+  const dk = todayKey();
+  const d = getData();
+  if (!d[dk]) d[dk] = { entries: {}, note: '' };
+  d[dk].note = document.getElementById('dailyNote').value;
+  saveData(d);
+}
+
+// ════════════════════════════════════════
+// LINKEDIN POST GENERATOR
+// ════════════════════════════════════════
+
+function generatePost(dateKey) {
+  const dayData = getDayData(dateKey);
+  const entries = dayData.entries;
+  const note = dayData.note || '';
+
+  const fmtDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US',
+    {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  let lines = [];
+  lines.push(`🚀 Day in Code | ${fmtDate}`);
+  lines.push('');
+  lines.push("Here's a recap of what I covered today as a beginner coder:");
+  lines.push('');
+
+  const catOrder = ['frontend','javascript','backend','dsaJava','dsaCpp','python','java','cpp','git'];
+  const emojis = {
+    frontend:'🎨', javascript:'⚡', backend:'🔧',
+    dsaJava:'☕', dsaCpp:'⚙️', python:'🐍',
+    java:'☕', cpp:'⚙️', git:'🌿'
+  };
+
+  let hasContent = false;
+  catOrder.forEach(k => {
+    const arr = entries[k] || [];
+    if (arr.length === 0) return;
+    hasContent = true;
+    lines.push(`${emojis[k] || '📌'} **${CATEGORIES[k].label}** (${arr.length} lecture${arr.length>1?'s':''})`);
+    arr.forEach(e => {
+      lines.push(`  • ${e.topic}${e.subcat ? ' ['+e.subcat+']' : ''}`);
+    });
+    lines.push('');
+  });
+
+  if (!hasContent) {
+    lines.push('No lectures logged for this day yet.');
+    lines.push('');
+  }
+
+  if (note.trim()) {
+    lines.push('💡 Notes:');
+    lines.push(note.trim());
+    lines.push('');
+  }
+
+  lines.push('Every day of learning counts. Keep coding! 💻');
+  lines.push('');
+  lines.push('#100DaysOfCode #CodingJourney #LearnToCode #Beginner #Programming #OpenToWork');
+
+  return lines.join('\n');
+}
+
+// ════════════════════════════════════════
+// DOWNLOAD
+// ════════════════════════════════════════
+
+function downloadTodaySummary() {
+  const dk = todayKey();
+  const post = generatePost(dk);
+  const blob = new Blob([post], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `CodeLog_${dk}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Summary downloaded!');
+}
+
+function downloadHistoryDate(format) {
+  const picker = document.getElementById('historyDatePicker');
+  const dk = picker.value || todayKey();
+  const post = generatePost(dk);
+
+  let content, filename, mime;
+  if (format === 'md') {
+    content = post.replace(/\*\*(.*?)\*\*/g,'**$1**');
+    filename = `CodeLog_${dk}.md`;
+    mime = 'text/markdown';
+  } else {
+    content = post.replace(/\*\*(.*?)\*\*/g,'$1');
+    filename = `CodeLog_${dk}.txt`;
+    mime = 'text/plain';
+  }
+
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast('Downloaded!');
+}
+
+function copyLinkedinPost() {
+  const el = document.getElementById('historyLinkedinPost');
+  navigator.clipboard.writeText(el.textContent).then(() => toast('Copied to clipboard!'));
+}
+
+// ════════════════════════════════════════
+// HISTORY TAB
+// ════════════════════════════════════════
+
+function loadHistoryDate() {
+  const picker = document.getElementById('historyDatePicker');
+  const dk = picker.value;
+  if (!dk) return;
+
+  const post = generatePost(dk);
+  document.getElementById('historyLinkedinPost').textContent = post;
+  document.getElementById('historyDateView').style.display = 'block';
+}
+
+function renderTimeline() {
+  const d = getData();
+  const keys = Object.keys(d).sort((a,b) => b.localeCompare(a));
+  const container = document.getElementById('timeline');
+
+  if (keys.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="es-icon">📭</div>
+      <p>No sessions recorded yet. Start logging today's lectures!</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = keys.map(dk => {
+    const day = d[dk];
+    const entries = day.entries || {};
+    let total = 0;
+    const activeCats = [];
+    Object.keys(entries).forEach(k => {
+      const n = entries[k].length;
+      if (n > 0) { total += n; activeCats.push(k); }
+    });
+
+    const fmtDate = new Date(dk + 'T00:00:00').toLocaleDateString('en-US',
+      {weekday:'short', year:'numeric', month:'short', day:'numeric'});
+
+    const catTags = activeCats.map(k =>
+      `<span class="timeline-cat-tag"><span class="dot ${CATEGORIES[k]?.dot}" style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;"></span>${CATEGORIES[k]?.label||k}</span>`
+    ).join('');
+
+    // Build mini detail
+    let detail = '';
+    activeCats.forEach(k => {
+      const arr = entries[k] || [];
+      if (arr.length === 0) return;
+      detail += `<div style="margin-bottom:0.5rem;">
+        <div style="font-size:0.75rem;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:0.3rem;">${CATEGORIES[k]?.label}</div>
+        ${arr.map(e=>`<div style="font-size:0.78rem;color:var(--text);padding:0.2rem 0;">• ${escHtml(e.topic)}${e.subcat?' <span style="color:var(--muted);">['+escHtml(e.subcat)+']</span>':''}</div>`).join('')}
+      </div>`;
+    });
+    if (day.note) detail += `<div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted);border-top:1px solid var(--border);padding-top:0.5rem;">📝 ${escHtml(day.note)}</div>`;
+
+    return `<div class="timeline-item" onclick="toggleTimeline('tl-${dk}')">
+      <div class="timeline-header">
+        <div>
+          <div class="timeline-date">${fmtDate}</div>
+          <div class="timeline-count">${total} lecture${total!==1?'s':''}</div>
+        </div>
+        <div>
+          <div class="timeline-cats">${catTags}</div>
+          <div style="text-align:right;font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">▾ expand</div>
+        </div>
+      </div>
+      <div class="timeline-body" id="tl-${dk}">${detail || '<div style="color:var(--muted);font-size:0.78rem;">No details</div>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTimeline(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+// ════════════════════════════════════════
+// OVERVIEW TAB
+// ════════════════════════════════════════
+
+function renderOverview() {
+  const d = getData();
+  const days = Object.keys(d);
+  let total = 0;
+  const catCounts = {};
+  Object.keys(CATEGORIES).forEach(k => catCounts[k] = 0);
+
+  days.forEach(dk => {
+    const entries = d[dk].entries || {};
+    Object.keys(entries).forEach(k => {
+      const n = entries[k].length;
+      total += n;
+      if (catCounts[k] !== undefined) catCounts[k] += n;
+    });
+  });
+
+  document.getElementById('overallStats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon">📚</div>
+      <div class="stat-info">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total Lectures</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🗓</div>
+      <div class="stat-info">
+        <div class="stat-num">${days.length}</div>
+        <div class="stat-label">Days Tracked</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🔥</div>
+      <div class="stat-info">
+        <div class="stat-num">${days.length ? Math.round(total/days.length) : 0}</div>
+        <div class="stat-label">Avg per Day</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏅</div>
+      <div class="stat-info">
+        <div class="stat-num">${Object.keys(catCounts).filter(k=>catCounts[k]>0).length}</div>
+        <div class="stat-label">Topics Touched</div>
+      </div>
+    </div>`;
+
+  // Progress bars
+  const maxVal = Math.max(...Object.values(catCounts), 1);
+  const colors = {
+    frontend:'#06b6d4', javascript:'#eab308', backend:'#10b981',
+    dsaJava:'#f59e0b', dsaCpp:'#ef4444', python:'#3b82f6',
+    java:'#f59e0b', cpp:'#ef4444', git:'#8b5cf6'
+  };
+
+  const sorted = Object.keys(catCounts).sort((a,b) => catCounts[b]-catCounts[a]);
+
+  document.getElementById('catProgress').innerHTML = sorted.map(k => `
+    <div class="prog-row">
+      <div class="prog-label">${CATEGORIES[k].label}</div>
+      <div class="prog-bar-wrap">
+        <div class="prog-bar" style="width:${(catCounts[k]/maxVal*100)}%;background:${colors[k]||'#6b7280'}"></div>
+      </div>
+      <div class="prog-num">${catCounts[k]}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// DATA IMPORT / EXPORT
+// ════════════════════════════════════════
+
+function exportAllData() {
+  const d = getData();
+  const blob = new Blob([JSON.stringify(d, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `CodeLog_backup_${todayKey()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Data exported!');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      const existing = getData();
+      const merged = {...existing, ...d};
+      saveData(merged);
+      toast('Data imported successfully!');
+      renderOverview();
+      renderToday();
+    } catch {
+      toast('Import failed — invalid JSON');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('This will delete ALL your lecture records. Are you sure?')) return;
+  localStorage.removeItem('codelog_data');
+  toast('All data cleared');
+  renderToday();
+  renderOverview();
+  renderTimeline();
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+
+// Set today as default for history picker
+document.getElementById('historyDatePicker').value = todayKey();
+
+renderToday();
+
+// Auto-refresh stats every minute
+setInterval(updateTodayStats, 60000);
+</script>
+</body>
+</html>
